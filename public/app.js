@@ -424,6 +424,10 @@ document.addEventListener('DOMContentLoaded', () => {
            addressScale.appendChild(mark);
        }
        
+       // Clear side labels panel
+       const holeSideLabels = document.getElementById('holeSideLabels');
+       if (holeSideLabels) holeSideLabels.innerHTML = '';
+
        blocks.forEach(b => {
            let topPercent = (b.startAddress / totalMemory) * 100;
            let heightPercent = (b.size / totalMemory) * 100;
@@ -446,14 +450,57 @@ document.addEventListener('DOMContentLoaded', () => {
            if(b.type === 'process') {
                div.innerHTML = `<span><strong style="font-size: 1.1rem;">${b.name}</strong><br>${b.size}MB</span>`;
            } else {
-               // Always label free holes; show size only when there is visual room
+               // Inside the bar: show label only if enough visual room
                if(heightPercent > 2.5) {
                    div.innerHTML = `<span style="color:#64748b; font-weight:600;">Free<br>${b.size} MB</span>`;
                } else if(heightPercent > 0.8) {
                    div.innerHTML = `<span style="color:#64748b; font-weight:600; font-size:0.65rem;">Free ${b.size} MB</span>`;
-               } else {
-                   // Tiny hole — just a visual stripe, no label
-                   div.title = `Free: ${b.size} MB`;
+               }
+
+               // External side label — always added for EVERY hole
+               if(holeSideLabels) {
+                   let midPercent = topPercent + heightPercent / 2;
+
+                   let label = document.createElement('div');
+                   label.style.cssText = `
+                       position: absolute;
+                       top: ${midPercent}%;
+                       transform: translateY(-50%);
+                       left: 0;
+                       display: flex;
+                       align-items: center;
+                       gap: 3px;
+                       white-space: nowrap;
+                       pointer-events: none;
+                       z-index: 20;
+                   `;
+
+                   // small connector line
+                   let line = document.createElement('div');
+                   line.style.cssText = `
+                       width: 10px;
+                       height: 1.5px;
+                       background: #94a3b8;
+                       flex-shrink: 0;
+                   `;
+
+                   // text badge
+                   let badge = document.createElement('div');
+                   badge.style.cssText = `
+                       background: #e2e8f0;
+                       border: 1px solid #cbd5e1;
+                       border-radius: 4px;
+                       padding: 1px 5px;
+                       font-size: 0.68rem;
+                       font-weight: 700;
+                       color: #475569;
+                       line-height: 1.5;
+                   `;
+                   badge.textContent = `Free ${b.size} MB`;
+
+                   label.appendChild(line);
+                   label.appendChild(badge);
+                   holeSideLabels.appendChild(label);
                }
            }
            

@@ -104,9 +104,16 @@
                             <!-- Dynamically generated -->
                         </div>
 
-                        <!-- Main Memory Container -->
-                        <div class="memory-container bg-white rounded-3 shadow" id="memoryContainer">
-                            <!-- Memory blocks injected here -->
+                        <!-- Memory bar + side labels wrapper -->
+                        <div style="display:flex; align-items:flex-start; gap:0;">
+                            <!-- Main Memory Container -->
+                            <div class="memory-container bg-white rounded-3 shadow" id="memoryContainer">
+                                <!-- Memory blocks injected here -->
+                            </div>
+                            <!-- Side labels for free holes (always visible) -->
+                            <div id="holeSideLabels" style="position:relative; width:70px; height:600px; flex-shrink:0;">
+                                <!-- Dynamically generated -->
+                            </div>
                         </div>
                     </div>
                 </div>

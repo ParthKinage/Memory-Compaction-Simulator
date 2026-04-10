@@ -411,19 +411,6 @@ document.addEventListener('DOMContentLoaded', () => {
        memoryContainer.innerHTML = '';
        addressScale.innerHTML = '';
        
-       // Create scale marks - vertical scale text corresponding to Addresses
-       let marks = 6;
-       for(let i=0; i<=marks; i++) {
-           let val = Math.round((totalMemory / marks) * i);
-           let topPercent = (val / totalMemory) * 100;
-           
-           let mark = document.createElement('div');
-           mark.className = 'address-mark';
-           mark.style.top = `${topPercent}%`;
-           mark.innerText = val;
-           addressScale.appendChild(mark);
-       }
-       
        // Clear side labels panel
        const holeSideLabels = document.getElementById('holeSideLabels');
        if (holeSideLabels) holeSideLabels.innerHTML = '';

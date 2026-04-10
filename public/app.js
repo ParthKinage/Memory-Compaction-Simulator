@@ -94,25 +94,103 @@ document.addEventListener('DOMContentLoaded', () => {
         initializeMemory(totalMemInput.value);
     });
 
+    // Modal & Toast references
+    const compactionModal = new bootstrap.Modal(document.getElementById('compactionModal'));
+    const errorToast      = new bootstrap.Toast(document.getElementById('errorToast'), { delay: 4000 });
+    const modalCompactBtn  = document.getElementById('modalCompactBtn');
+    const errorToastMsg    = document.getElementById('errorToastMsg');
+
+    // Holds pending process while user is shown the modal
+    let pendingProcess = null;
+
     addProcessForm.addEventListener('submit', async (e) => {
         e.preventDefault();
+        const name = pName.value.trim();
+        const size = parseInt(pSize.value);
+        await tryAddProcess(name, size);
+    });
+
+    async function tryAddProcess(name, size, isRetry = false) {
         try {
             let res = await fetch(`${API_BASE}/add-process`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ name: pName.value, size: parseInt(pSize.value) })
+                body: JSON.stringify({ name, size })
             });
             let data = await res.json();
-            if(data.success) {
+
+            if (data.success) {
                 logAction(data.message, "success");
+                pName.value = '';
+                pSize.value = '';
+                fetchState();
             } else {
-                logAction(data.message, "error");
+                fetchState(); // keep display updated
+
+                if (data.isDuplicate) {
+                    // Duplicate process name — show error toast immediately
+                    errorToastMsg.textContent = data.message;
+                    logAction(data.message, "error");
+                    errorToast.show();
+                } else if (data.compactionWouldHelp) {
+                    // Show the popup — compaction will free enough space
+                    pendingProcess = { name, size };
+                    document.getElementById('modalProcessName').textContent = `Process: ${name}  (${size} MB required)`;
+                    document.getElementById('modalProcessInfo').textContent =
+                        `Cannot allocate — no single hole is large enough.`;
+                    document.getElementById('modalLargestHole').textContent = `${data.largestHole} MB`;
+                    document.getElementById('modalTotalFree').textContent   = `${data.totalFree} MB`;
+                    document.getElementById('modalNeedSize').textContent    = `${size} MB`;
+                    document.getElementById('modalExplanation').textContent =
+                        `Total free memory (${data.totalFree} MB) is enough for ${name} (${size} MB), but it is ` +
+                        `scattered across multiple holes. Compacting memory will merge all gaps into one ` +
+                        `contiguous free block so the process can be allocated.`;
+                    logAction(`⚠ Compaction needed to fit ${name} (${size} MB). Total free: ${data.totalFree} MB, largest hole: ${data.largestHole} MB.`, "warning");
+                    compactionModal.show();
+                } else {
+                    // Not even compaction can help — show error toast
+                    if (isRetry) {
+                        errorToastMsg.textContent = `Even after compaction, not enough memory for ${name} (${size} MB). Total free: ${data.totalFree} MB.`;
+                    } else {
+                        errorToastMsg.textContent = data.message;
+                    }
+                    logAction(data.message, "error");
+                    errorToast.show();
+                    pName.value = '';
+                    pSize.value = '';
+                }
             }
-            pName.value = '';
-            pSize.value = '';
-            fetchState();
         } catch (error) {
             logAction("Error adding process", "error");
+        }
+    }
+
+    // "Compact & Retry" button inside the modal
+    modalCompactBtn.addEventListener('click', async () => {
+        compactionModal.hide();
+        if (!pendingProcess) return;
+
+        logAction(`Auto-compacting memory to fit ${pendingProcess.name}...`, "info");
+
+        try {
+            // Run compaction first
+            let cRes = await fetch(`${API_BASE}/compact`, { method: 'POST' });
+            let cData = await cRes.json();
+
+            if (cData.steps.length === 0) {
+                logAction("Memory is already compacted.", "info");
+            } else {
+                cData.steps.forEach(s => logAction(s, "success"));
+                logAction(`Compaction complete — ${cData.savedSpace} MB merged into one block.`, "success");
+            }
+
+            // Retry the process allocation
+            const { name, size } = pendingProcess;
+            pendingProcess = null;
+            await tryAddProcess(name, size, true);
+
+        } catch (err) {
+            logAction("Error during auto-compaction", "error");
         }
     });
 
@@ -368,8 +446,14 @@ document.addEventListener('DOMContentLoaded', () => {
            if(b.type === 'process') {
                div.innerHTML = `<span><strong style="font-size: 1.1rem;">${b.name}</strong><br>${b.size}MB</span>`;
            } else {
-               if(heightPercent > 4) {
-                   div.innerHTML = `<span style="color:#64748b; font-weight:500;">Free<br>${b.size}MB</span>`;
+               // Always label free holes; show size only when there is visual room
+               if(heightPercent > 2.5) {
+                   div.innerHTML = `<span style="color:#64748b; font-weight:600;">Free<br>${b.size} MB</span>`;
+               } else if(heightPercent > 0.8) {
+                   div.innerHTML = `<span style="color:#64748b; font-weight:600; font-size:0.65rem;">Free ${b.size} MB</span>`;
+               } else {
+                   // Tiny hole — just a visual stripe, no label
+                   div.title = `Free: ${b.size} MB`;
                }
            }
            

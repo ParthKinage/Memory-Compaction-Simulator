@@ -146,7 +146,22 @@ app.post('/api/compact', (req, res) => {
 app.post('/api/add-process', (req, res) => {
   const { name, size } = req.body;
   const processSize = parseInt(size);
-  
+
+  // ── Duplicate name check (case-insensitive) ──────────────────────────────
+  const duplicate = memoryState.memory.some(
+    b => b.type === 'process' && b.name.toLowerCase() === name.toLowerCase()
+  );
+  if (duplicate) {
+    return res.json({
+      success: false,
+      memory: memoryState.memory,
+      message: `A process named "${name}" already exists. Please use a different name.`,
+      isDuplicate: true,
+      compactionWouldHelp: false
+    });
+  }
+  // ─────────────────────────────────────────────────────────────────────────
+
   let allocated = false;
   let newMemory = [];
   
@@ -186,17 +201,35 @@ app.post('/api/add-process', (req, res) => {
     memoryState.memory = newMemory;
     res.json({ success: true, memory: memoryState.memory, message: `Allocated ${name} successfully using First Fit.` });
   } else {
-    res.json({ success: false, memory: memoryState.memory, message: `Failed to allocate ${name}. Not enough contiguous space.` });
+    // Calculate total free memory across all holes
+    const totalFree = memoryState.memory
+      .filter(b => b.type === 'hole')
+      .reduce((sum, b) => sum + b.size, 0);
+    const largestHole = memoryState.memory
+      .filter(b => b.type === 'hole')
+      .reduce((max, b) => Math.max(max, b.size), 0);
+    const compactionWouldHelp = totalFree >= processSize && largestHole < processSize;
+    
+    res.json({
+      success: false,
+      memory: memoryState.memory,
+      message: `Failed to allocate ${name}. Not enough contiguous space (need ${processSize} MB, largest hole: ${largestHole} MB).`,
+      totalFree,
+      largestHole,
+      processSize,
+      compactionWouldHelp
+    });
   }
 });
 
 // 4. POST /api/remove-process
 app.post('/api/remove-process', (req, res) => {
   const { name } = req.body;
-  
+
+  // Only remove the FIRST matching process (guard with `found` flag)
   let found = false;
   memoryState.memory = memoryState.memory.map(b => {
-    if (b.type === "process" && b.name === name) {
+    if (!found && b.type === "process" && b.name === name) {
       found = true;
       return {
         ...b,
@@ -207,7 +240,20 @@ app.post('/api/remove-process', (req, res) => {
     }
     return b;
   });
-  
+
+  // Coalesce adjacent holes so freed space merges with neighbouring free blocks
+  const coalesced = [];
+  for (const b of memoryState.memory) {
+    const prev = coalesced[coalesced.length - 1];
+    if (prev && prev.type === 'hole' && b.type === 'hole') {
+      // Merge: extend the previous hole to absorb this one
+      prev.size += b.size;
+    } else {
+      coalesced.push({ ...b });
+    }
+  }
+  memoryState.memory = coalesced;
+
   res.json({ memory: memoryState.memory, message: found ? `Removed ${name}` : `Process ${name} not found` });
 });
 
@@ -251,6 +297,19 @@ app.post('/api/random-fragmentation', (req, res) => {
          }
          return b;
       });
+
+      // Coalesce adjacent holes after random removal
+      const coalesced = [];
+      for (const b of memoryState.memory) {
+        const prev = coalesced[coalesced.length - 1];
+        if (prev && prev.type === 'hole' && b.type === 'hole') {
+          prev.size += b.size;
+        } else {
+          coalesced.push({ ...b });
+        }
+      }
+      memoryState.memory = coalesced;
+
       res.json({message: `Randomly removed: ${namesToRemove.join(', ')}`});
    } else {
       res.json({message: "Not enough processes to fragment randomly."});

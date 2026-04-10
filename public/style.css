@@ -127,3 +127,44 @@
 .transition-all:hover {
     transform: translateY(-2px);
 }
+
+/* ── Compaction Modal styles ─────────────────────── */
+
+/* Pulsing icon in modal header */
+.compaction-icon-wrapper {
+    animation: iconPulse 2s ease-in-out infinite;
+}
+@keyframes iconPulse {
+    0%, 100% { transform: scale(1);   opacity: 1; }
+    50%       { transform: scale(1.15); opacity: 0.85; }
+}
+
+/* Compact & Retry button glow */
+#modalCompactBtn {
+    background: linear-gradient(135deg, #f59e0b, #d97706);
+    border: none;
+    color: #1a1a1a;
+    transition: transform 0.18s ease, box-shadow 0.18s ease;
+}
+#modalCompactBtn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(245, 158, 11, 0.45) !important;
+}
+#modalCompactBtn:active {
+    transform: translateY(0);
+}
+
+/* Modal backdrop extra blur for focus */
+.modal-backdrop.show {
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
+}
+
+/* Error toast shake-in */
+#errorToast {
+    animation: toastSlideIn 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+@keyframes toastSlideIn {
+    from { transform: translateX(120%); opacity: 0; }
+    to   { transform: translateX(0);   opacity: 1; }
+}

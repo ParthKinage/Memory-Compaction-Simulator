@@ -176,6 +176,94 @@
         </div>
     </div>
 
+    <!-- COMPACTION NEEDED MODAL -->
+    <div class="modal fade" id="compactionModal" tabindex="-1" aria-labelledby="compactionModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content border-0 shadow-lg rounded-4 overflow-hidden">
+                <!-- Warning Header -->
+                <div class="modal-header border-0 pb-0" style="background: linear-gradient(135deg, #1e293b, #0f172a); padding: 1.5rem 1.75rem 1rem;">
+                    <div class="d-flex align-items-center gap-3">
+                        <div class="compaction-icon-wrapper">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" fill="none" viewBox="0 0 24 24">
+                                <circle cx="12" cy="12" r="12" fill="#f59e0b" opacity="0.18"/>
+                                <path d="M12 7v5m0 3h.01" stroke="#f59e0b" stroke-width="2.2" stroke-linecap="round"/>
+                                <circle cx="12" cy="12" r="10" stroke="#f59e0b" stroke-width="1.8" fill="none"/>
+                            </svg>
+                        </div>
+                        <div>
+                            <h5 class="modal-title fw-bold text-white mb-0" id="compactionModalLabel">Memory Compaction Needed</h5>
+                            <p class="text-warning mb-0" style="font-size:0.82rem; opacity:0.85;">Insufficient contiguous space detected</p>
+                        </div>
+                    </div>
+                    <button type="button" class="btn-close btn-close-white ms-auto" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+
+                <!-- Body -->
+                <div class="modal-body px-4 py-4" style="background:#f8fafc;">
+                    <!-- Process info row -->
+                    <div class="d-flex align-items-center gap-3 mb-4 p-3 rounded-3 border" style="background:#fff;">
+                        <div class="flex-shrink-0">
+                            <div style="width:44px;height:44px;border-radius:12px;background:linear-gradient(135deg,#ef4444,#b91c1c);display:flex;align-items:center;justify-content:center;">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" fill="none" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="3" stroke="white" stroke-width="2"/><path d="M9 12h6M12 9v6" stroke="white" stroke-width="2" stroke-linecap="round"/></svg>
+                            </div>
+                        </div>
+                        <div>
+                            <div class="fw-semibold text-dark" id="modalProcessName" style="font-size:1rem;"></div>
+                            <div class="text-muted" style="font-size:0.82rem;" id="modalProcessInfo"></div>
+                        </div>
+                    </div>
+
+                    <!-- Memory Stats Cards -->
+                    <div class="row g-2 mb-3">
+                        <div class="col-4">
+                            <div class="text-center p-3 rounded-3 border h-100" style="background:#fff;">
+                                <div class="fw-bold text-danger" id="modalLargestHole" style="font-size:1.3rem;">—</div>
+                                <div class="text-muted" style="font-size:0.72rem;">Largest Hole</div>
+                            </div>
+                        </div>
+                        <div class="col-4">
+                            <div class="text-center p-3 rounded-3 border h-100" style="background:#fff;">
+                                <div class="fw-bold text-success" id="modalTotalFree" style="font-size:1.3rem;">—</div>
+                                <div class="text-muted" style="font-size:0.72rem;">Total Free</div>
+                            </div>
+                        </div>
+                        <div class="col-4">
+                            <div class="text-center p-3 rounded-3 border h-100" style="background:#fff;">
+                                <div class="fw-bold text-primary" id="modalNeedSize" style="font-size:1.3rem;">—</div>
+                                <div class="text-muted" style="font-size:0.72rem;">Process Size</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Explanation -->
+                    <div class="alert alert-warning border-0 rounded-3 d-flex align-items-start gap-2 mb-0 py-3" style="font-size:0.85rem;">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="#92400e" viewBox="0 0 20 20" style="flex-shrink:0;margin-top:1px"><path fill-rule="evenodd" d="M8.485 2.495c.673-1.167 2.357-1.167 3.03 0l6.28 10.875c.673 1.167-.17 2.625-1.516 2.625H3.72c-1.347 0-2.189-1.458-1.515-2.625L8.485 2.495zM10 5a.75.75 0 01.75.75v3.5a.75.75 0 01-1.5 0v-3.5A.75.75 0 0110 5zm0 9a1 1 0 100-2 1 1 0 000 2z" clip-rule="evenodd"/></svg>
+                        <span id="modalExplanation">Free memory exists but is fragmented across multiple holes. Memory compaction will merge all free spaces into one contiguous block.</span>
+                    </div>
+                </div>
+
+                <!-- Footer Buttons -->
+                <div class="modal-footer border-0 px-4 py-3 gap-2" style="background:#f1f5f9;">
+                    <button type="button" class="btn btn-outline-secondary rounded-pill fw-semibold px-4" data-bs-dismiss="modal" id="modalCancelBtn">Cancel</button>
+                    <button type="button" class="btn btn-warning rounded-pill fw-bold px-4 shadow-sm" id="modalCompactBtn">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" viewBox="0 0 24 24" class="me-1"><path d="M12 4v16M4 12h16" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/></svg>
+                        Compact &amp; Retry
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ALLOCATION ERROR TOAST (when compaction also can't help) -->
+    <div class="position-fixed bottom-0 end-0 p-3" style="z-index:1100">
+        <div id="errorToast" class="toast align-items-center text-white bg-danger border-0 shadow-lg rounded-3" role="alert" aria-live="assertive">
+            <div class="d-flex p-1">
+                <div class="toast-body fw-semibold" id="errorToastMsg">Not enough memory even after compaction.</div>
+                <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+            </div>
+        </div>
+    </div>
+
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script src="app.js"></script>
 </body>
